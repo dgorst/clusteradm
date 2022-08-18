@@ -3,6 +3,7 @@ package join
 
 import (
 	"fmt"
+	"os"
 
 	genericclioptionsclusteradm "open-cluster-management.io/clusteradm/pkg/genericclioptions"
 	"open-cluster-management.io/clusteradm/pkg/helpers"
@@ -55,5 +56,17 @@ func NewCmd(clusteradmFlags *genericclioptionsclusteradm.ClusteradmFlags, stream
 		"If true, the installed klusterlet agent will be starting the cluster registration process by "+
 			"looking for the internal endpoint from the public cluster-info in the hub cluster instead of from --hub-apiserver.")
 	cmd.Flags().BoolVar(&o.wait, "wait", false, "If true, running the cluster registration in foreground.")
+
+	cmd.Flags().StringVar(&o.registrationType, "registration-type", "csr", "choose the registration type from csr or aws-iam")
+
+	// Flags for AWS/EKS clusters
+	cmd.Flags().BoolVar(&o.awsCreateClusterIamRole, "aws-create-iam-role", true, "AWS only: create the IAM role this worker will use to auth with the hub cluster")
+	cmd.Flags().StringVar(&o.awsEksClusterName, "aws-eks-cluster", "", "AWS only: The OIDC url for the worker EKS cluster")
+	cmd.Flags().StringVar(&o.awsWorkerAccountId, "aws-worker-account-id", "", "AWS only: the ID of the AWS account this WORKER cluster is in")
+	cmd.Flags().StringVar(&o.awsHubAccountId, "aws-hub-account-id", "", "AWS only: the ID of the AWS account the HUB cluster is in")
+	cmd.Flags().StringVar(&o.awsIamProvider, "aws-iam-provider", "irsa", "AWS only: The pod IAM provider in use - defaults to irsa")
+	cmd.Flags().StringVar(&o.awsRegion, "aws-region", os.Getenv("AWS_REGION"), "AWS only: The region the worker cluster resides in")
+	cmd.Flags().StringToStringVar(&o.awsAdditionalTags, "aws-tags", nil, "AWS only: additional tags to add to any created resources")
+
 	return cmd
 }

@@ -1,0 +1,18 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::{{ .WorkerAccountId }}:oidc-provider/oidc.eks.{{ .Region }}.amazonaws.com/id/{{ .OidcProvider }}"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "oidc.eks.{{ .Region }}.amazonaws.com/id/{{ .OidcProvider }}:sub": "system:serviceaccount:{{ .Namespace }}:{{ .ServiceAccount }}",
+          "oidc.eks.{{ .Region }}.amazonaws.com/id/{{ .OidcProvider }}:aud": "sts.amazonaws.com"
+        }
+      }
+    }
+  ]
+}

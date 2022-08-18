@@ -31,6 +31,20 @@ type Options struct {
 	// the external endpoint from --hub-apiserver instead of looking for the internal
 	// endpoint from the public cluster-info.
 	forceHubInClusterEndpointLookup bool
+
+	// By default the registrationType is csr
+	registrationType string
+
+	// The AWS account IDs - only required for aws-iam registration
+	awsWorkerAccountId string
+	awsHubAccountId    string
+	// Create an IAM role the worker cluster will use to assume a role in the hub account
+	// When false, the user must take responsibility for creating a role
+	awsCreateClusterIamRole bool
+	awsEksClusterName       string
+	awsIamProvider          string
+	awsRegion               string
+	awsAdditionalTags       map[string]string
 }
 
 //Values: The values used in the template
@@ -58,10 +72,19 @@ type Hub struct {
 	Registry string
 }
 
+type Aws struct {
+	IamRoleArn  string
+	IamProvider string
+}
+
 // Klusterlet is for templating klusterlet configuration
 type Klusterlet struct {
 	//APIServer: The API Server external URL
 	APIServer string
+	// Registration Type
+	RegistrationType string
+	// AWS Options
+	Aws Aws
 }
 
 type BundleVersion struct {
