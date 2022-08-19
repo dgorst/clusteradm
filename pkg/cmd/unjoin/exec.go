@@ -42,7 +42,11 @@ func (o *Options) validate() error {
 func (o *Options) run() error {
 
 	if o.awsPurgeResources {
-		if err := aws.Unjoin(o.ClusteradmFlags.DryRun, aws.UnjoinOpts{
+		awsClient, err := aws.NewFromDefaultConfig(o.ClusteradmFlags.DryRun)
+		if err != nil {
+			return err
+		}
+		if err := awsClient.Unjoin(aws.UnjoinOpts{
 			DeleteAWSRole: true,
 			ClusterName:   o.clusterName,
 		}); err != nil {

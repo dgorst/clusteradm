@@ -5,9 +5,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
-	"log"
 )
 
 type UnjoinOpts struct {
@@ -15,18 +13,13 @@ type UnjoinOpts struct {
 	ClusterName   string
 }
 
-func Unjoin(dryRun bool, opts UnjoinOpts) error {
+func (c client) Unjoin(opts UnjoinOpts) error {
 	if opts.DeleteAWSRole {
-		cfg, err := config.LoadDefaultConfig(context.TODO())
-		if err != nil {
-			log.Fatal(err)
-		}
-		iamClient := iam.NewFromConfig(cfg)
 		roleName := getRoleName(opts.ClusterName)
 
 		// Check if the role exists, and if is managed
 		fmt.Println("Checking role", roleName, "is managed")
-		role, err := iamClient.GetRole(context.TODO(), &iam.GetRoleInput{
+		role, err := c.iamClient.GetRole(context.TODO(), &iam.GetRoleInput{
 			RoleName: aws.String(roleName),
 		})
 		if err != nil {
@@ -37,7 +30,7 @@ func Unjoin(dryRun bool, opts UnjoinOpts) error {
 		}
 
 		fmt.Println("Getting attached policies for", roleName)
-		attachedPolicies, err := iamClient.ListAttachedRolePolicies(context.TODO(), &iam.ListAttachedRolePoliciesInput{
+		attachedPolicies, err := c.iamClient.ListAttachedRolePolicies(context.TODO(), &iam.ListAttachedRolePoliciesInput{
 			RoleName: aws.String(roleName),
 		})
 		// TODO(@dgorst) - check for truncated result (should never happen)
@@ -47,10 +40,10 @@ func Unjoin(dryRun bool, opts UnjoinOpts) error {
 
 		for _, p := range attachedPolicies.AttachedPolicies {
 			fmt.Println("Detaching policy", aws.ToString(p.PolicyName), "from role", roleName)
-			if dryRun {
+			if c.dryRun {
 				fmt.Println("Dry run - skipping!")
 			} else {
-				if _, err = iamClient.DetachRolePolicy(context.TODO(), &iam.DetachRolePolicyInput{
+				if _, err = c.iamClient.DetachRolePolicy(context.TODO(), &iam.DetachRolePolicyInput{
 					PolicyArn: p.PolicyArn,
 					RoleName:  aws.String(roleName),
 				}); err != nil {
@@ -58,7 +51,7 @@ func Unjoin(dryRun bool, opts UnjoinOpts) error {
 				}
 			}
 
-			policy, err := iamClient.GetPolicy(context.TODO(), &iam.GetPolicyInput{
+			policy, err := c.iamClient.GetPolicy(context.TODO(), &iam.GetPolicyInput{
 				PolicyArn: p.PolicyArn,
 			})
 			if err != nil {
@@ -66,10 +59,10 @@ func Unjoin(dryRun bool, opts UnjoinOpts) error {
 			}
 			if isManaged(policy.Policy.Tags) {
 				fmt.Println("Deleting policy", aws.ToString(p.PolicyName))
-				if dryRun {
+				if c.dryRun {
 					fmt.Println("Dry run - skipping!")
 				} else {
-					_, err := iamClient.DeletePolicy(context.TODO(), &iam.DeletePolicyInput{
+					_, err := c.iamClient.DeletePolicy(context.TODO(), &iam.DeletePolicyInput{
 						PolicyArn: p.PolicyArn,
 					})
 					if err != nil {
@@ -82,10 +75,10 @@ func Unjoin(dryRun bool, opts UnjoinOpts) error {
 		}
 
 		fmt.Println("Deleting role", roleName)
-		if dryRun {
+		if c.dryRun {
 			fmt.Println("Dry run - skipping!")
 		} else {
-			if _, err := iamClient.DeleteRole(context.TODO(), &iam.DeleteRoleInput{
+			if _, err := c.iamClient.DeleteRole(context.TODO(), &iam.DeleteRoleInput{
 				RoleName: aws.String(roleName),
 			}); err != nil {
 				return err

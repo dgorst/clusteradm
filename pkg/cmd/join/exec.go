@@ -140,7 +140,11 @@ func (o *Options) run() error {
 	output := make([]string, 0)
 
 	if o.registrationType == "aws-iam" && o.awsCreateClusterIamRole {
-		if roleArn, err := aws.Join(o.ClusteradmFlags.DryRun, aws.JoinOpts{
+		awsClient, err := aws.NewFromDefaultConfig(o.ClusteradmFlags.DryRun)
+		if err != nil {
+			return err
+		}
+		if roleArn, err := awsClient.Join(aws.JoinOpts{
 			ClusterName:     o.clusterName,
 			EksClusterName:  o.awsEksClusterName,
 			HubAccountId:    o.awsHubAccountId,

@@ -7,11 +7,9 @@ import (
 	_ "embed"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/eks"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/iam/types"
-	"log"
 	"text/template"
 )
 
@@ -33,19 +31,9 @@ type JoinOpts struct {
 	OidcProvider    string // Discovered
 }
 
-func Join(dryRun bool, opts JoinOpts) (string, error) {
+func (c client) Join(opts JoinOpts) (string, error) {
 
-	fmt.Println("Validating AWS environment...")
-
-	cfg, err := config.LoadDefaultConfig(context.TODO())
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	eksClient := eks.NewFromConfig(cfg)
-	iamClient := iam.NewFromConfig(cfg)
-
-	eksCluster, err := eksClient.DescribeCluster(context.TODO(), &eks.DescribeClusterInput{
+	eksCluster, err := c.eksClient.DescribeCluster(context.TODO(), &eks.DescribeClusterInput{
 		Name: aws.String(opts.EksClusterName),
 	})
 	if err != nil {
@@ -61,7 +49,7 @@ func Join(dryRun bool, opts JoinOpts) (string, error) {
 	fmt.Println("OIDC is configured for EKS cluster, with issuer", issuer)
 	opts.OidcProvider = issuer
 
-	oidcProvider, err := iamClient.GetOpenIDConnectProvider(context.TODO(), &iam.GetOpenIDConnectProviderInput{
+	oidcProvider, err := c.iamClient.GetOpenIDConnectProvider(context.TODO(), &iam.GetOpenIDConnectProviderInput{
 		OpenIDConnectProviderArn: aws.String(getOidcArn(opts.WorkerAccountId, opts.Region, issuer)),
 	})
 	if err != nil {
@@ -72,7 +60,7 @@ func Join(dryRun bool, opts JoinOpts) (string, error) {
 
 	policyName := getPolicyName(opts.ClusterName)
 	policyArn := getPolicyArn(opts.WorkerAccountId, policyName)
-	_, err = iamClient.GetPolicy(context.TODO(), &iam.GetPolicyInput{
+	_, err = c.iamClient.GetPolicy(context.TODO(), &iam.GetPolicyInput{
 		PolicyArn: aws.String(policyArn),
 	})
 	if err == nil {
@@ -84,7 +72,7 @@ func Join(dryRun bool, opts JoinOpts) (string, error) {
 
 	roleName := getRoleName(opts.ClusterName)
 	roleArn := getRoleArn(opts.WorkerAccountId, roleName)
-	_, err = iamClient.GetRole(context.TODO(), &iam.GetRoleInput{
+	_, err = c.iamClient.GetRole(context.TODO(), &iam.GetRoleInput{
 		RoleName: aws.String(roleName),
 	})
 	if err == nil {
@@ -111,7 +99,7 @@ func Join(dryRun bool, opts JoinOpts) (string, error) {
 	}
 	fmt.Println()
 
-	if dryRun {
+	if c.dryRun {
 		fmt.Println("dry run - not creating any AWS resources!")
 		return roleArn, nil
 	}
@@ -131,7 +119,7 @@ func Join(dryRun bool, opts JoinOpts) (string, error) {
 	}
 	fmt.Println(buf.String())
 
-	policy, err := iamClient.CreatePolicy(context.TODO(), &iam.CreatePolicyInput{
+	policy, err := c.iamClient.CreatePolicy(context.TODO(), &iam.CreatePolicyInput{
 		PolicyDocument: aws.String(buf.String()),
 		PolicyName:     aws.String(policyName),
 		Description:    aws.String(fmt.Sprintf("Allows OCM on EKS cluster %s to assume a role enabling access to the hub cluster", opts.ClusterName)),
@@ -156,7 +144,7 @@ func Join(dryRun bool, opts JoinOpts) (string, error) {
 	}
 	fmt.Println(buf.String())
 
-	role, err := iamClient.CreateRole(context.TODO(), &iam.CreateRoleInput{
+	role, err := c.iamClient.CreateRole(context.TODO(), &iam.CreateRoleInput{
 		AssumeRolePolicyDocument: aws.String(buf.String()),
 		RoleName:                 aws.String(roleName),
 		Description:              aws.String("OCM role to allow klusterlet to auth with hub cluster"),
@@ -168,7 +156,7 @@ func Join(dryRun bool, opts JoinOpts) (string, error) {
 	fmt.Println("created role", aws.ToString(role.Role.Arn))
 
 	// Attach the assume policy to this role
-	_, err = iamClient.AttachRolePolicy(context.TODO(), &iam.AttachRolePolicyInput{
+	_, err = c.iamClient.AttachRolePolicy(context.TODO(), &iam.AttachRolePolicyInput{
 		PolicyArn: policy.Policy.Arn,
 		RoleName:  role.Role.RoleName,
 	})
