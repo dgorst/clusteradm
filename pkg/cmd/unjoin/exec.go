@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"open-cluster-management.io/clusteradm/pkg/cloudprovider/aws"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -39,6 +40,15 @@ func (o *Options) validate() error {
 }
 
 func (o *Options) run() error {
+
+	if o.awsPurgeResources {
+		if err := aws.Unjoin(o.ClusteradmFlags.DryRun, aws.UnjoinOpts{
+			DeleteAWSRole: true,
+			ClusterName:   o.clusterName,
+		}); err != nil {
+			return err
+		}
+	}
 
 	// Delete the applied resource in the Managed cluster
 	nameSpace := "open-cluster-management"

@@ -8,13 +8,18 @@ import (
 	"strings"
 )
 
+const (
+	clusterTag = "open-cluster-management.io/cluster"
+	managedTag = "open-cluster-management.io/managed"
+)
+
 // Given https://oidc.eks.us-west-2.amazonaws.com/id/XXXXXXYYYYYY
 // Return XXXXXXYYYYYY
 func getOIDCProvider(url string) string {
 	return strings.Split(url, "/")[4]
 }
 
-// arn:aws:iam::464976251208:oidc-provider/oidc.eks.us-west-2.amazonaws.com/id/76380BEFC6656F8DDCB6D0DA76D44E4B
+// arn:aws:iam::12345:oidc-provider/oidc.eks.us-west-2.amazonaws.com/id/XXXXXXYYYYYY
 func getOidcArn(accountID, region, oidcProvider string) string {
 	return fmt.Sprintf("arn:aws:iam::%s:oidc-provider/oidc.eks.%s.amazonaws.com/id/%s", accountID, region, oidcProvider)
 }
@@ -44,4 +49,13 @@ func toTags(kv map[string]string) []types.Tag {
 		})
 	}
 	return tags
+}
+
+func isManaged(tags []types.Tag) bool {
+	for _, t := range tags {
+		if aws.ToString(t.Key) == managedTag && aws.ToString(t.Value) == "True" {
+			return true
+		}
+	}
+	return false
 }

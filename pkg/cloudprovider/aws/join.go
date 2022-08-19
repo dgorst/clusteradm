@@ -15,11 +15,6 @@ import (
 	"text/template"
 )
 
-const (
-	clusterTag = "open-cluster-management.io/cluster"
-	managedTag = "open-cluster-management.io/managed"
-)
-
 //go:embed assume-role-policy-document.json
 var assumeRolePolicyDocTpl string
 

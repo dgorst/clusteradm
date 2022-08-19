@@ -4,8 +4,8 @@ package aws
 import "testing"
 
 func Test_getOIDCProvider(t *testing.T) {
-	result := getOIDCProvider("https://oidc.eks.us-west-2.amazonaws.com/id/F6A18EC9822E1DE30347A30D754659C4")
-	if result != "F6A18EC9822E1DE30347A30D754659C4" {
-		t.Fatal("expected F6A18EC9822E1DE30347A30D754659C4 but got " + result)
+	result := getOIDCProvider("https://oidc.eks.us-west-2.amazonaws.com/id/XXXXXXYYYYYY")
+	if result != "XXXXXXYYYYYY" {
+		t.Fatal("expected XXXXXXYYYYYY but got " + result)
 	}
 }

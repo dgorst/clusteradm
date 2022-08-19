@@ -46,5 +46,6 @@ func NewCmd(clusteradmFlags *genericclioptionsclusteradm.ClusteradmFlags, stream
 	cmd.Flags().StringVar(&o.clusterName, "cluster-name", "", "The name of the joining cluster")
 	cmd.Flags().BoolVar(&o.purgeOperator, "purge-operator", true, "Purge the operator")
 	cmd.Flags().StringVar(&o.outputFile, "output-file", "", "The generated resources will be copied in the specified file")
+	cmd.Flags().BoolVar(&o.awsPurgeResources, "aws-purge-resources", false, "Purge AWS IAM role and polices associated with this managed cluster")
 	return cmd
 }
