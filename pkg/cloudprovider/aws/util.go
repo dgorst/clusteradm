@@ -53,7 +53,7 @@ func toTags(kv map[string]string) []types.Tag {
 
 func isManaged(tags []types.Tag) bool {
 	for _, t := range tags {
-		if aws.ToString(t.Key) == managedTag && aws.ToString(t.Value) == "True" {
+		if aws.ToString(t.Key) == managedTag && aws.ToString(t.Value) == "true" {
 			return true
 		}
 	}
