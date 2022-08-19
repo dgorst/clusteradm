@@ -40,13 +40,6 @@ func (o *Options) complete(cmd *cobra.Command, args []string) (err error) {
 			Registry:  o.registry,
 		},
 	}
-	if o.registrationType == "aws-iam" {
-		o.values.Klusterlet.Aws = Aws{
-			IamRoleArn:  fmt.Sprintf("arn:aws:iam::%s:role/ocm-worker-%s", o.awsWorkerAccountId, o.clusterName),
-			IamProvider: o.awsIamProvider,
-		}
-	}
-
 	versionBundle, err := version.GetVersionBundle(o.bundleVersion)
 
 	if err != nil {
@@ -77,6 +70,7 @@ func (o *Options) complete(cmd *cobra.Command, args []string) (err error) {
 		klusterletApiserver = ""
 	}
 	o.values.Klusterlet.APIServer = klusterletApiserver
+	o.values.Klusterlet.RegistrationType = o.registrationType
 
 	klog.V(3).InfoS("values:",
 		"clusterName", o.values.ClusterName,
@@ -146,7 +140,7 @@ func (o *Options) run() error {
 	output := make([]string, 0)
 
 	if o.registrationType == "aws-iam" && o.awsCreateClusterIamRole {
-		if err := aws.Join(o.ClusteradmFlags.DryRun, aws.JoinOpts{
+		if roleArn, err := aws.Join(o.ClusteradmFlags.DryRun, aws.JoinOpts{
 			ClusterName:     o.clusterName,
 			EksClusterName:  o.awsEksClusterName,
 			HubAccountId:    o.awsHubAccountId,
@@ -157,6 +151,11 @@ func (o *Options) run() error {
 			AdditionalTags:  o.awsAdditionalTags,
 		}); err != nil {
 			return err
+		} else {
+			o.values.Klusterlet.Aws = Aws{
+				IamRoleArn:  roleArn,
+				IamProvider: o.awsIamProvider,
+			}
 		}
 	}
 

@@ -17,6 +17,7 @@ import (
 
 const (
 	clusterTag = "open-cluster-management.io/cluster"
+	managedTag = "open-cluster-management.io/managed"
 )
 
 //go:embed assume-role-policy-document.json
@@ -37,7 +38,7 @@ type JoinOpts struct {
 	OidcProvider    string // Discovered
 }
 
-func Join(dryRun bool, opts JoinOpts) error {
+func Join(dryRun bool, opts JoinOpts) (string, error) {
 
 	fmt.Println("Validating AWS environment...")
 
@@ -53,13 +54,13 @@ func Join(dryRun bool, opts JoinOpts) error {
 		Name: aws.String(opts.EksClusterName),
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
 	fmt.Println("EKS worker cluster", aws.ToString(eksCluster.Cluster.Name), "exists!")
 
 	// Get the OIDC provider for the cluster
 	if eksCluster.Cluster.Identity.Oidc == nil || eksCluster.Cluster.Identity.Oidc.Issuer == nil {
-		return fmt.Errorf("you need to configure an OIDC provider for your cluster")
+		return "", fmt.Errorf("you need to configure an OIDC provider for your cluster")
 	}
 	issuer := getOIDCProvider(aws.ToString(eksCluster.Cluster.Identity.Oidc.Issuer))
 	fmt.Println("OIDC is configured for EKS cluster, with issuer", issuer)
@@ -70,7 +71,7 @@ func Join(dryRun bool, opts JoinOpts) error {
 	})
 	if err != nil {
 		// TODO(@dgorst) - return nice error message if a 404 to do eksctl utils associate-iam-oidc-provider --cluster worker-0 --approve
-		return err
+		return "", err
 	}
 	fmt.Println("OIDC Provider", aws.ToString(oidcProvider.Url), "exists!")
 
@@ -80,7 +81,7 @@ func Join(dryRun bool, opts JoinOpts) error {
 		PolicyArn: aws.String(policyArn),
 	})
 	if err == nil {
-		return fmt.Errorf("policy %s already exists", policyArn)
+		return "", fmt.Errorf("policy %s already exists", policyArn)
 	} else {
 		// TODO(@dgorst) - be specific for a 404
 		fmt.Println("Policy", policyArn, "does not exist - will create!")
@@ -92,7 +93,7 @@ func Join(dryRun bool, opts JoinOpts) error {
 		RoleName: aws.String(roleName),
 	})
 	if err == nil {
-		return fmt.Errorf("role %s already exists", roleArn)
+		return "", fmt.Errorf("role %s already exists", roleArn)
 	} else {
 		// TODO(@dgorst) - be specific for a 404
 		fmt.Println("Role", roleArn, "does not exist - will create!")
@@ -104,6 +105,9 @@ func Join(dryRun bool, opts JoinOpts) error {
 	tags = append(tags, types.Tag{
 		Key:   aws.String(clusterTag),
 		Value: aws.String(opts.ClusterName),
+	}, types.Tag{
+		Key:   aws.String(managedTag),
+		Value: aws.String("true"),
 	})
 	fmt.Println()
 	fmt.Println("Resources will be created with the following tags:")
@@ -114,7 +118,7 @@ func Join(dryRun bool, opts JoinOpts) error {
 
 	if dryRun {
 		fmt.Println("dry run - not creating any AWS resources!")
-		return nil
+		return roleArn, nil
 	}
 
 	// Create a policy to assume the hub cluster role (Which does not yet exist)
@@ -122,13 +126,13 @@ func Join(dryRun bool, opts JoinOpts) error {
 	fmt.Println("Creating IAM policy", policyName)
 	policyTpl, err := template.New("policy").Parse(assumeHubRolePolicyDocTpl)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	buf := bytes.NewBufferString("")
 	err = policyTpl.Execute(buf, opts)
 	if err != nil {
-		return err
+		return "", err
 	}
 	fmt.Println(buf.String())
 
@@ -139,7 +143,7 @@ func Join(dryRun bool, opts JoinOpts) error {
 		Tags:           tags,
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
 	fmt.Println("created policy", aws.ToString(policy.Policy.Arn))
 
@@ -149,11 +153,11 @@ func Join(dryRun bool, opts JoinOpts) error {
 	fmt.Println("Creating IAM role", roleName, "with attached policy...")
 	roleTpl, err := template.New("role").Parse(assumeRolePolicyDocTpl)
 	if err != nil {
-		return err
+		return "", err
 	}
 	err = roleTpl.Execute(buf, opts)
 	if err != nil {
-		return err
+		return "", err
 	}
 	fmt.Println(buf.String())
 
@@ -164,7 +168,7 @@ func Join(dryRun bool, opts JoinOpts) error {
 		Tags:                     tags,
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
 	fmt.Println("created role", aws.ToString(role.Role.Arn))
 
@@ -174,10 +178,10 @@ func Join(dryRun bool, opts JoinOpts) error {
 		RoleName:  role.Role.RoleName,
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	fmt.Println("attached policy role", aws.ToString(policy.Policy.Arn), "to role", aws.ToString(role.Role.Arn))
 
-	return nil
+	return roleArn, nil
 }

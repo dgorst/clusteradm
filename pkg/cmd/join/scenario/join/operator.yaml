@@ -48,7 +48,11 @@ spec:
           - "klusterlet"
 {{ if eq .Klusterlet.RegistrationType "aws-iam" }}
           - --aws-iam-registration
-          - --aws-worker-iam-role-arn {{ .Klusterlet.Aws.IamRoleArn }}
+        env:
+          - name: IAM_PROVIDER
+            value: {{ .Klusterlet.Aws.IamProvider }}
+          - name: IAM_WORKER_ROLE_ARN
+            value: {{ .Klusterlet.Aws.IamRoleArn }}
 {{ end }}
         livenessProbe:
           httpGet:
