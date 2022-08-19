@@ -9,8 +9,9 @@ import (
 )
 
 const (
-	clusterTag = "open-cluster-management.io/cluster"
-	managedTag = "open-cluster-management.io/managed"
+	clusterTag     = "open-cluster-management.io/cluster"
+	managedTag     = "open-cluster-management.io/managed"
+	managedTagTrue = "true"
 )
 
 // Given https://oidc.eks.us-west-2.amazonaws.com/id/XXXXXXYYYYYY
@@ -53,7 +54,7 @@ func toTags(kv map[string]string) []types.Tag {
 
 func isManaged(tags []types.Tag) bool {
 	for _, t := range tags {
-		if aws.ToString(t.Key) == managedTag && aws.ToString(t.Value) == "true" {
+		if aws.ToString(t.Key) == managedTag && aws.ToString(t.Value) == managedTagTrue {
 			return true
 		}
 	}

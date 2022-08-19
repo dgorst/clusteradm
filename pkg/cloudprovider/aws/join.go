@@ -102,7 +102,7 @@ func Join(dryRun bool, opts JoinOpts) (string, error) {
 		Value: aws.String(opts.ClusterName),
 	}, types.Tag{
 		Key:   aws.String(managedTag),
-		Value: aws.String("true"),
+		Value: aws.String(managedTagTrue),
 	})
 	fmt.Println()
 	fmt.Println("Resources will be created with the following tags:")
