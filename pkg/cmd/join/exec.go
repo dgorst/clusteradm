@@ -149,8 +149,8 @@ func (o *Options) run() error {
 			EksClusterName:  o.awsEksClusterName,
 			HubAccountId:    o.awsHubAccountId,
 			WorkerAccountId: o.awsWorkerAccountId,
-			Namespace:       "open-cluster-management",
-			ServiceAccount:  "klusterlet",
+			Namespace:       "open-cluster-management-agent",
+			ServiceAccount:  "klusterlet-registration-sa",
 			Region:          o.awsRegion,
 			AdditionalTags:  o.awsAdditionalTags,
 		}); err != nil {
