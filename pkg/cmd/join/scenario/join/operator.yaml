@@ -46,8 +46,6 @@ spec:
         args:
           - "/registration-operator"
           - "klusterlet"
-          - "--registration-type"
-          - "{{ .Klusterlet.RegistrationType }}"
         livenessProbe:
           httpGet:
             path: /healthz
