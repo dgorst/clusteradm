@@ -3,6 +3,11 @@ apiVersion: operator.open-cluster-management.io/v1
 kind: Klusterlet
 metadata:
   name: klusterlet
+  {{ if eq .Klusterlet.RegistrationType "aws-iam" }}
+  annotations:
+    open-cluster-management.io/aws-worker-role: "{{ .Klusterlet.Aws.IamRoleArn }}"
+    open-cluster-management.io/aws-iam-provider: "{{ .Klusterlet.Aws.IamProvider }}"
+  {{ end }}
 spec: 
   registrationImagePullSpec: {{ .Hub.Registry }}/registration:{{ .BundleVersion.RegistrationImageVersion }}
   workImagePullSpec: {{ .Hub.Registry }}/work:{{ .BundleVersion.RegistrationImageVersion }}  

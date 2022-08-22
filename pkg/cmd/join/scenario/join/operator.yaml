@@ -52,7 +52,7 @@ spec:
           - "--aws-iam-provider"
           - "{{ .Klusterlet.Aws.IamProvider }}"
           - "--aws-iam-worker-role-arn"
-          - {{ .Klusterlet.Aws.IamRoleArn }}"
+          - "{{ .Klusterlet.Aws.IamRoleArn }}"
 {{ end }}
         livenessProbe:
           httpGet:

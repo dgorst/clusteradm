@@ -100,13 +100,13 @@ func (c client) Join(opts JoinOpts) (string, error) {
 	fmt.Println()
 
 	if c.dryRun {
-		fmt.Println("dry run - not creating any AWS resources!")
+		fmt.Println("Dry run - not creating any AWS resources!")
 		return roleArn, nil
 	}
 
 	// Create a policy to assume the hub cluster role (Which does not yet exist)
 
-	fmt.Println("Creating IAM policy", policyName)
+	fmt.Println("Creating IAM policy", policyName, "to allow the worker to assume a role in the hub's account")
 	policyTpl, err := template.New("policy").Parse(assumeHubRolePolicyDocTpl)
 	if err != nil {
 		return "", err
@@ -128,7 +128,7 @@ func (c client) Join(opts JoinOpts) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fmt.Println("created policy", aws.ToString(policy.Policy.Arn))
+	fmt.Println("Created policy", aws.ToString(policy.Policy.Arn))
 
 	buf.Reset()
 
@@ -153,7 +153,7 @@ func (c client) Join(opts JoinOpts) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fmt.Println("created role", aws.ToString(role.Role.Arn))
+	fmt.Println("Created role", aws.ToString(role.Role.Arn))
 
 	// Attach the assume policy to this role
 	_, err = c.iamClient.AttachRolePolicy(context.TODO(), &iam.AttachRolePolicyInput{
@@ -163,8 +163,7 @@ func (c client) Join(opts JoinOpts) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
-	fmt.Println("attached policy role", aws.ToString(policy.Policy.Arn), "to role", aws.ToString(role.Role.Arn))
+	fmt.Println("Attached policy role", aws.ToString(policy.Policy.Arn), "to role", aws.ToString(role.Role.Arn))
 
 	return roleArn, nil
 }
