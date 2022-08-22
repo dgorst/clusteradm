@@ -48,12 +48,6 @@ spec:
           - "klusterlet"
           - "--registration-type"
           - "{{ .Klusterlet.RegistrationType }}"
-{{ if eq .Klusterlet.RegistrationType "aws-iam" }}
-          - "--aws-iam-provider"
-          - "{{ .Klusterlet.Aws.IamProvider }}"
-          - "--aws-iam-worker-role-arn"
-          - "{{ .Klusterlet.Aws.IamRoleArn }}"
-{{ end }}
         livenessProbe:
           httpGet:
             path: /healthz
