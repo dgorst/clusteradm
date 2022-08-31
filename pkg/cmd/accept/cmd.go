@@ -3,6 +3,7 @@ package accept
 
 import (
 	"fmt"
+	"os"
 
 	genericclioptionsclusteradm "open-cluster-management.io/clusteradm/pkg/genericclioptions"
 	"open-cluster-management.io/clusteradm/pkg/helpers"
@@ -50,5 +51,10 @@ func NewCmd(clusteradmFlags *genericclioptionsclusteradm.ClusteradmFlags, stream
 	cmd.Flags().StringVar(&o.Clusters, "clusters", "", "Names of the cluster to accept (comma separated)")
 	cmd.Flags().BoolVar(&o.Wait, "wait", false, "If set, wait for the managedcluster and CSR in foreground.")
 	cmd.Flags().BoolVar(&o.SkipApproveCheck, "skip-approve-check", false, "If set, then skip check and approve csr directly.")
+
+	cmd.Flags().StringVar(&o.awsHubEksClusterName, "aws-hub-eks-cluster", "", "AWS only: the name of the hub EKS cluster")
+	cmd.Flags().StringToStringVar(&o.awsAdditionalTags, "aws-tags", nil, "AWS only: additional tags to add to any created resources")
+	cmd.Flags().StringVar(&o.awsRegion, "aws-region", os.Getenv("AWS_REGION"), "AWS only: The region the worker cluster resides in")
+
 	return cmd
 }

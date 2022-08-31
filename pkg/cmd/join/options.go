@@ -36,8 +36,7 @@ type Options struct {
 	registrationType string
 
 	// The AWS account IDs - only required for aws-iam registration
-	awsWorkerAccountId string
-	awsHubAccountId    string
+	awsHubAccountId string
 	// Create an IAM role the worker cluster will use to assume a role in the hub account
 	// When false, the user must take responsibility for creating a role
 	awsCreateClusterIamRole bool

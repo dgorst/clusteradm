@@ -6,17 +6,20 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/eks"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
-func NewFromDefaultConfig(dryRun bool) (*client, error) {
+func NewFromDefaultConfig(dryRun bool, region string) (*client, error) {
 	cfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
 		return nil, err
 	}
+	cfg.Region = region
 	return &client{
 		dryRun:    dryRun,
 		iamClient: iam.NewFromConfig(cfg),
 		eksClient: eks.NewFromConfig(cfg),
+		stsClient: sts.NewFromConfig(cfg),
 	}, nil
 }
 
@@ -37,8 +40,13 @@ type eksClient interface {
 	DescribeCluster(ctx context.Context, params *eks.DescribeClusterInput, optFns ...func(options *eks.Options)) (*eks.DescribeClusterOutput, error)
 }
 
+type stsClient interface {
+	GetCallerIdentity(ctx context.Context, params *sts.GetCallerIdentityInput, optFns ...func(options *sts.Options)) (*sts.GetCallerIdentityOutput, error)
+}
+
 type client struct {
 	dryRun    bool
 	iamClient iamClient
 	eksClient eksClient
+	stsClient stsClient
 }

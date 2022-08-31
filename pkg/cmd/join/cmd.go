@@ -62,7 +62,6 @@ func NewCmd(clusteradmFlags *genericclioptionsclusteradm.ClusteradmFlags, stream
 	// Flags for AWS/EKS clusters
 	cmd.Flags().BoolVar(&o.awsCreateClusterIamRole, "aws-create-iam-role", true, "AWS only: create the IAM role this worker will use to auth with the hub cluster")
 	cmd.Flags().StringVar(&o.awsEksClusterName, "aws-eks-cluster", "", "AWS only: The OIDC url for the worker EKS cluster")
-	cmd.Flags().StringVar(&o.awsWorkerAccountId, "aws-worker-account-id", "", "AWS only: the ID of the AWS account this WORKER cluster is in")
 	cmd.Flags().StringVar(&o.awsHubAccountId, "aws-hub-account-id", "", "AWS only: the ID of the AWS account the HUB cluster is in")
 	cmd.Flags().StringVar(&o.awsIamProvider, "aws-iam-provider", "irsa", "AWS only: The pod IAM provider in use - defaults to irsa")
 	cmd.Flags().StringVar(&o.awsRegion, "aws-region", os.Getenv("AWS_REGION"), "AWS only: The region the worker cluster resides in")

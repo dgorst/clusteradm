@@ -17,6 +17,10 @@ type Options struct {
 	SkipApproveCheck bool
 
 	Values Values
+
+	awsAdditionalTags    map[string]string
+	awsHubEksClusterName string
+	awsRegion            string
 }
 
 //Values: The values used in the template

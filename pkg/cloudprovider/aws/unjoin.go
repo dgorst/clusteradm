@@ -13,13 +13,13 @@ type UnjoinOpts struct {
 	ClusterName   string
 }
 
-func (c client) Unjoin(opts UnjoinOpts) error {
+func (c client) Unjoin(ctx context.Context, opts UnjoinOpts) error {
 	if opts.DeleteAWSRole {
-		roleName := getRoleName(opts.ClusterName)
+		roleName := getWorkerAccountRoleName(opts.ClusterName)
 
 		// Check if the role exists, and if is managed
 		fmt.Println("Checking role", roleName, "is managed")
-		role, err := c.iamClient.GetRole(context.TODO(), &iam.GetRoleInput{
+		role, err := c.iamClient.GetRole(ctx, &iam.GetRoleInput{
 			RoleName: aws.String(roleName),
 		})
 		if err != nil {
@@ -30,7 +30,7 @@ func (c client) Unjoin(opts UnjoinOpts) error {
 		}
 
 		fmt.Println("Getting attached policies for", roleName)
-		attachedPolicies, err := c.iamClient.ListAttachedRolePolicies(context.TODO(), &iam.ListAttachedRolePoliciesInput{
+		attachedPolicies, err := c.iamClient.ListAttachedRolePolicies(ctx, &iam.ListAttachedRolePoliciesInput{
 			RoleName: aws.String(roleName),
 		})
 		// TODO(@dgorst) - check for truncated result (should never happen)
@@ -43,7 +43,7 @@ func (c client) Unjoin(opts UnjoinOpts) error {
 			if c.dryRun {
 				fmt.Println("Dry run - skipping!")
 			} else {
-				if _, err = c.iamClient.DetachRolePolicy(context.TODO(), &iam.DetachRolePolicyInput{
+				if _, err = c.iamClient.DetachRolePolicy(ctx, &iam.DetachRolePolicyInput{
 					PolicyArn: p.PolicyArn,
 					RoleName:  aws.String(roleName),
 				}); err != nil {
@@ -51,7 +51,7 @@ func (c client) Unjoin(opts UnjoinOpts) error {
 				}
 			}
 
-			policy, err := c.iamClient.GetPolicy(context.TODO(), &iam.GetPolicyInput{
+			policy, err := c.iamClient.GetPolicy(ctx, &iam.GetPolicyInput{
 				PolicyArn: p.PolicyArn,
 			})
 			if err != nil {
@@ -62,7 +62,7 @@ func (c client) Unjoin(opts UnjoinOpts) error {
 				if c.dryRun {
 					fmt.Println("Dry run - skipping!")
 				} else {
-					_, err := c.iamClient.DeletePolicy(context.TODO(), &iam.DeletePolicyInput{
+					_, err := c.iamClient.DeletePolicy(ctx, &iam.DeletePolicyInput{
 						PolicyArn: p.PolicyArn,
 					})
 					if err != nil {
@@ -78,7 +78,7 @@ func (c client) Unjoin(opts UnjoinOpts) error {
 		if c.dryRun {
 			fmt.Println("Dry run - skipping!")
 		} else {
-			if _, err := c.iamClient.DeleteRole(context.TODO(), &iam.DeleteRoleInput{
+			if _, err := c.iamClient.DeleteRole(ctx, &iam.DeleteRoleInput{
 				RoleName: aws.String(roleName),
 			}); err != nil {
 				return err

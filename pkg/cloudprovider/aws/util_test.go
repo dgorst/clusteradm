@@ -8,6 +8,18 @@ import (
 	"testing"
 )
 
+func Test_getAccountIDFromEksArn(t *testing.T) {
+	assert.Equal(t, "12345", getAccountIDFromEksArn("arn:aws:eks:us-west-2:12345:cluster/hub"))
+}
+
+func Test_getRegionFromEksArn(t *testing.T) {
+	assert.Equal(t, "us-west-2", getRegionFromEksArn("arn:aws:eks:us-west-2:12345:cluster/hub"))
+}
+
+func Test_getAccountIDFromRoleArn(t *testing.T) {
+	assert.Equal(t, "12341234", getAccountIDFromRoleArn("arn:aws:iam::12341234:role/foo-bar"))
+}
+
 func Test_getOIDCProvider(t *testing.T) {
 	result := getOIDCProvider("https://oidc.eks.us-west-2.amazonaws.com/id/XXXXXXYYYYYY")
 	assert.Equal(t, "XXXXXXYYYYYY", result)

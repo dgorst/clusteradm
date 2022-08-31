@@ -25,7 +25,7 @@ func getOidcArn(accountID, region, oidcProvider string) string {
 	return fmt.Sprintf("arn:aws:iam::%s:oidc-provider/oidc.eks.%s.amazonaws.com/id/%s", accountID, region, oidcProvider)
 }
 
-func getPolicyName(clusterName string) string {
+func getWorkerPolicyName(clusterName string) string {
 	return fmt.Sprintf("ocm.worker.%s", clusterName)
 }
 
@@ -33,12 +33,32 @@ func getPolicyArn(accountID, policyName string) string {
 	return fmt.Sprintf("arn:aws:iam::%s:policy/%s", accountID, policyName)
 }
 
-func getRoleName(clusterName string) string {
+func getWorkerAccountRoleName(clusterName string) string {
 	return fmt.Sprintf("ocm.worker.%s", clusterName)
+}
+
+func getHubAccountPolicyName(clusterName string) string {
+	return fmt.Sprintf("ocm.remote-worker.%s", clusterName)
+}
+
+func getHubAccountRoleName(clusterName string) string {
+	return fmt.Sprintf("ocm.remote-worker.%s", clusterName)
 }
 
 func getRoleArn(accountID, roleName string) string {
 	return fmt.Sprintf("arn:aws:iam::%s:role/%s", accountID, roleName)
+}
+
+func getAccountIDFromRoleArn(roleArn string) string {
+	return strings.Split(roleArn, ":")[4]
+}
+
+func getRegionFromEksArn(eksArn string) string {
+	return strings.Split(eksArn, ":")[3]
+}
+
+func getAccountIDFromEksArn(eksArn string) string {
+	return strings.Split(eksArn, ":")[4]
 }
 
 func toTags(kv map[string]string) []types.Tag {

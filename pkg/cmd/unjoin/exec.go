@@ -46,7 +46,7 @@ func (o *Options) run() error {
 		if err != nil {
 			return err
 		}
-		if err := awsClient.Unjoin(aws.UnjoinOpts{
+		if err := awsClient.Unjoin(context.TODO(), aws.UnjoinOpts{
 			DeleteAWSRole: true,
 			ClusterName:   o.clusterName,
 		}); err != nil {

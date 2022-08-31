@@ -108,12 +108,6 @@ func (o *Options) validate() error {
 		if o.awsIamProvider != "irsa" {
 			return fmt.Errorf("only irsa is supported at this time")
 		}
-		if len(o.awsWorkerAccountId) == 0 {
-			return fmt.Errorf("you must set --aws-account-id when -registration-type=aws-iam")
-		}
-		if len(o.awsWorkerAccountId) == 0 {
-			return fmt.Errorf("you must set --aws-account-id when -registration-type=aws-iam")
-		}
 		if len(o.awsRegion) == 0 {
 			return fmt.Errorf("you must set --aws-region when -registration-type=aws-iam")
 		}
@@ -124,9 +118,6 @@ func (o *Options) validate() error {
 		}
 		if len(o.awsEksClusterName) > 0 {
 			return fmt.Errorf("--aws-eks-cluster-name should only be set if --registration-type=aws-iam")
-		}
-		if len(o.awsWorkerAccountId) > 0 {
-			return fmt.Errorf("--aws-worker-account-id should only be set if --registration-type=aws-iam")
 		}
 		if len(o.awsHubAccountId) > 0 {
 			return fmt.Errorf("--aws-hub-account-id should only be set if --registration-type=aws-iam")
@@ -140,19 +131,18 @@ func (o *Options) run() error {
 	output := make([]string, 0)
 
 	if o.registrationType == "aws-iam" && o.awsCreateClusterIamRole {
-		awsClient, err := aws.NewFromDefaultConfig(o.ClusteradmFlags.DryRun)
+		awsClient, err := aws.NewFromDefaultConfig(o.ClusteradmFlags.DryRun, o.awsRegion)
 		if err != nil {
 			return err
 		}
-		if roleArn, err := awsClient.Join(aws.JoinOpts{
-			ClusterName:     o.clusterName,
-			EksClusterName:  o.awsEksClusterName,
-			HubAccountId:    o.awsHubAccountId,
-			WorkerAccountId: o.awsWorkerAccountId,
-			Namespace:       "open-cluster-management-agent",
-			ServiceAccount:  "klusterlet-registration-sa",
-			Region:          o.awsRegion,
-			AdditionalTags:  o.awsAdditionalTags,
+		if roleArn, err := awsClient.Join(context.TODO(), aws.JoinOpts{
+			ClusterName:    o.clusterName,
+			EksClusterName: o.awsEksClusterName,
+			HubAccountId:   o.awsHubAccountId,
+			Namespace:      "open-cluster-management-agent",
+			ServiceAccount: "klusterlet-registration-sa",
+			Region:         o.awsRegion,
+			AdditionalTags: o.awsAdditionalTags,
 		}); err != nil {
 			return err
 		} else {

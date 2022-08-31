@@ -10,13 +10,14 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/eks"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/iam/types"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"text/template"
 )
 
-//go:embed assume-role-policy-document.json
+//go:embed worker-permission-policy.json
 var assumeRolePolicyDocTpl string
 
-//go:embed assume-hub-role-policy-document.json
+//go:embed worker-trust-policy.json
 var assumeHubRolePolicyDocTpl string
 
 type JoinOpts struct {
@@ -31,9 +32,18 @@ type JoinOpts struct {
 	OidcProvider    string // Discovered
 }
 
-func (c client) Join(opts JoinOpts) (string, error) {
+func (c client) Join(ctx context.Context, opts JoinOpts) (string, error) {
 
-	eksCluster, err := c.eksClient.DescribeCluster(context.TODO(), &eks.DescribeClusterInput{
+	if opts.WorkerAccountId == "" {
+		fmt.Println("getting worker account id from sts identity")
+		i, err := c.stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
+		if err != nil {
+			return "", err
+		}
+		opts.WorkerAccountId = aws.ToString(i.Account)
+	}
+
+	eksCluster, err := c.eksClient.DescribeCluster(ctx, &eks.DescribeClusterInput{
 		Name: aws.String(opts.EksClusterName),
 	})
 	if err != nil {
@@ -49,7 +59,7 @@ func (c client) Join(opts JoinOpts) (string, error) {
 	fmt.Println("OIDC is configured for EKS cluster, with issuer", issuer)
 	opts.OidcProvider = issuer
 
-	oidcProvider, err := c.iamClient.GetOpenIDConnectProvider(context.TODO(), &iam.GetOpenIDConnectProviderInput{
+	oidcProvider, err := c.iamClient.GetOpenIDConnectProvider(ctx, &iam.GetOpenIDConnectProviderInput{
 		OpenIDConnectProviderArn: aws.String(getOidcArn(opts.WorkerAccountId, opts.Region, issuer)),
 	})
 	if err != nil {
@@ -58,9 +68,9 @@ func (c client) Join(opts JoinOpts) (string, error) {
 	}
 	fmt.Println("OIDC Provider", aws.ToString(oidcProvider.Url), "exists!")
 
-	policyName := getPolicyName(opts.ClusterName)
+	policyName := getWorkerPolicyName(opts.ClusterName)
 	policyArn := getPolicyArn(opts.WorkerAccountId, policyName)
-	_, err = c.iamClient.GetPolicy(context.TODO(), &iam.GetPolicyInput{
+	_, err = c.iamClient.GetPolicy(ctx, &iam.GetPolicyInput{
 		PolicyArn: aws.String(policyArn),
 	})
 	if err == nil {
@@ -70,9 +80,9 @@ func (c client) Join(opts JoinOpts) (string, error) {
 		fmt.Println("Policy", policyArn, "does not exist - will create!")
 	}
 
-	roleName := getRoleName(opts.ClusterName)
+	roleName := getWorkerAccountRoleName(opts.ClusterName)
 	roleArn := getRoleArn(opts.WorkerAccountId, roleName)
-	_, err = c.iamClient.GetRole(context.TODO(), &iam.GetRoleInput{
+	_, err = c.iamClient.GetRole(ctx, &iam.GetRoleInput{
 		RoleName: aws.String(roleName),
 	})
 	if err == nil {
@@ -104,10 +114,8 @@ func (c client) Join(opts JoinOpts) (string, error) {
 		return roleArn, nil
 	}
 
-	// Create a policy to assume the hub cluster role (Which does not yet exist)
-
 	fmt.Println("Creating IAM policy", policyName, "to allow the worker to assume a role in the hub's account")
-	policyTpl, err := template.New("policy").Parse(assumeHubRolePolicyDocTpl)
+	policyTpl, err := template.New("policy").Parse(assumeRolePolicyDocTpl)
 	if err != nil {
 		return "", err
 	}
@@ -119,7 +127,7 @@ func (c client) Join(opts JoinOpts) (string, error) {
 	}
 	fmt.Println(buf.String())
 
-	policy, err := c.iamClient.CreatePolicy(context.TODO(), &iam.CreatePolicyInput{
+	policy, err := c.iamClient.CreatePolicy(ctx, &iam.CreatePolicyInput{
 		PolicyDocument: aws.String(buf.String()),
 		PolicyName:     aws.String(policyName),
 		Description:    aws.String(fmt.Sprintf("Allows OCM on EKS cluster %s to assume a role enabling access to the hub cluster", opts.ClusterName)),
@@ -134,7 +142,7 @@ func (c client) Join(opts JoinOpts) (string, error) {
 
 	// Create a Role for this cluster
 	fmt.Println("Creating IAM role", roleName, "with attached policy...")
-	roleTpl, err := template.New("role").Parse(assumeRolePolicyDocTpl)
+	roleTpl, err := template.New("role").Parse(assumeHubRolePolicyDocTpl)
 	if err != nil {
 		return "", err
 	}
@@ -144,7 +152,7 @@ func (c client) Join(opts JoinOpts) (string, error) {
 	}
 	fmt.Println(buf.String())
 
-	role, err := c.iamClient.CreateRole(context.TODO(), &iam.CreateRoleInput{
+	role, err := c.iamClient.CreateRole(ctx, &iam.CreateRoleInput{
 		AssumeRolePolicyDocument: aws.String(buf.String()),
 		RoleName:                 aws.String(roleName),
 		Description:              aws.String("OCM role to allow klusterlet to auth with hub cluster"),
@@ -156,7 +164,7 @@ func (c client) Join(opts JoinOpts) (string, error) {
 	fmt.Println("Created role", aws.ToString(role.Role.Arn))
 
 	// Attach the assume policy to this role
-	_, err = c.iamClient.AttachRolePolicy(context.TODO(), &iam.AttachRolePolicyInput{
+	_, err = c.iamClient.AttachRolePolicy(ctx, &iam.AttachRolePolicyInput{
 		PolicyArn: policy.Policy.Arn,
 		RoleName:  role.Role.RoleName,
 	})

@@ -1,0 +1,17 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "eks:DescribeIdentityProviderConfig",
+        "eks:AccessKubernetesApi",
+        "eks:DescribeCluster"
+      ],
+      "Resource": [
+        "arn:aws:eks:*:{{ .HubAccountId }}:identityproviderconfig/*/*/*/*",
+        "arn:aws:eks:*:{{ .HubAccountId }}:cluster/*"
+      ]
+    }
+  ]
+}

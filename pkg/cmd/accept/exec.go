@@ -4,6 +4,8 @@ package accept
 import (
 	"context"
 	"fmt"
+	v1 "open-cluster-management.io/api/cluster/v1"
+	"open-cluster-management.io/clusteradm/pkg/cloudprovider/aws"
 	"strings"
 	"time"
 
@@ -74,6 +76,7 @@ func (o *Options) runWithClient(kubeClient *kubernetes.Clientset, clusterClient 
 		if !o.Wait {
 			var csrApproved bool
 			csrApproved, err = o.accept(kubeClient, clusterClient, clusterName, false)
+			// TODO(@dgorst) csr handling leaked
 			if err == nil && !csrApproved {
 				err = fmt.Errorf("no CSR to approve for cluster %s", clusterName)
 			}
@@ -90,15 +93,57 @@ func (o *Options) runWithClient(kubeClient *kubernetes.Clientset, clusterClient 
 }
 
 func (o *Options) accept(kubeClient *kubernetes.Clientset, clusterClient *clusterclientset.Clientset, clusterName string, waitMode bool) (bool, error) {
-	csrApproved, err := o.approveCSR(kubeClient, clusterName, waitMode)
+	authApproved := false
+
+	// TODO(@dgorst) - messy
+	c, err := o.getManagedCluster(clusterClient, clusterName)
 	if err != nil {
 		return false, err
 	}
-	mcUpdated, err := o.updateManagedCluster(clusterClient, clusterName)
+
+	useCsr := true
+	additionalAnnotations := make(map[string]string)
+	if c.Annotations != nil {
+		if v, ok := c.Annotations["open-cluster-management.io/aws-iam-worker-role"]; ok {
+			// This is an AWS IAM managedcluster - no CSRs, just roles
+			useCsr = false
+			// Get the remote account id from the arn
+			awsClient, err := aws.NewFromDefaultConfig(false, o.awsRegion)
+			if err != nil {
+				return false, err
+			}
+			result, err := awsClient.Accept(context.TODO(), aws.AcceptOpts{
+				KubeClient:     kubeClient,
+				ClusterName:    clusterName,
+				WorkerRole:     v,
+				HubClusterName: o.awsHubEksClusterName,
+				AdditionalTags: o.awsAdditionalTags,
+			})
+			if err != nil {
+				return false, err
+			}
+			authApproved = true
+
+			// We'll write these back to the mc - registration agent will need these details to complete the registration of the cluster
+			additionalAnnotations["open-cluster-management.io/aws-iam-hub-role"] = result.HubRoleArn
+			additionalAnnotations["open-cluster-management.io/aws-iam-hub-eks-cluster"] = result.HubEksCluster
+			additionalAnnotations["open-cluster-management.io/aws-iam-hub-region"] = result.HubAwsRegion
+			additionalAnnotations["open-cluster-management.io/aws-iam-hub-account"] = result.HubAwsAccount
+		}
+	}
+
+	if useCsr {
+		authApproved, err = o.approveCSR(kubeClient, clusterName, waitMode)
+		if err != nil {
+			return false, err
+		}
+	}
+
+	mcUpdated, err := o.updateManagedCluster(clusterClient, clusterName, additionalAnnotations)
 	if err != nil {
 		return false, err
 	}
-	if csrApproved && mcUpdated {
+	if authApproved && mcUpdated {
 		fmt.Printf("\n Your managed cluster %s has joined the Hub successfully. Visit https://open-cluster-management.io/scenarios or https://github.com/open-cluster-management-io/OCM/tree/main/solutions for next steps.\n", clusterName)
 		return true, nil
 	}
@@ -186,7 +231,13 @@ func (o *Options) approveCSR(kubeClient *kubernetes.Clientset, clusterName strin
 	return true, nil
 }
 
-func (o *Options) updateManagedCluster(clusterClient *clusterclientset.Clientset, clusterName string) (bool, error) {
+func (o *Options) getManagedCluster(clusterClient *clusterclientset.Clientset, clusterName string) (*v1.ManagedCluster, error) {
+	return clusterClient.ClusterV1().ManagedClusters().Get(context.TODO(),
+		clusterName,
+		metav1.GetOptions{})
+}
+
+func (o *Options) updateManagedCluster(clusterClient *clusterclientset.Clientset, clusterName string, additionalAnnotations map[string]string) (bool, error) {
 	mc, err := clusterClient.ClusterV1().ManagedClusters().Get(context.TODO(),
 		clusterName,
 		metav1.GetOptions{})
@@ -205,6 +256,10 @@ func (o *Options) updateManagedCluster(clusterClient *clusterclientset.Clientset
 	}
 	if !mc.Spec.HubAcceptsClient {
 		mc.Spec.HubAcceptsClient = true
+		// write additional config required by native cloud provider variants of the registration process
+		for k, v := range additionalAnnotations {
+			mc.Annotations[k] = v
+		}
 		_, err = clusterClient.ClusterV1().ManagedClusters().Update(context.TODO(), mc, metav1.UpdateOptions{})
 		if err != nil {
 			return false, err
