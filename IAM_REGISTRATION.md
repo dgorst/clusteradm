@@ -80,7 +80,14 @@ Please log onto the hub cluster and run the following command:
 - TODO clean up output from join command
 - TODO add additional required options to the join command
 
-Note the `--aws-tags` flag is optional - however it's common for businesses to enforce certain policies that these are included.
+Additional Flags:
+
+- `--hub-apiserver` the Hub's API endpoint (required for bootstrapping)
+- `--registration-type aws-iam` - defaults to `csr`
+- `--aws-create-iam-role` - create the IAM resources on behalf of the user. Leave if self managing with Terraform etc
+- `--aws-eks-cluster` - the EKS cluster name (might be different from the OCM cluster name!) - _required if aws-create-iam-role is true_
+- `--aws-hub-account-id` - the AWS account ID of the Hub cluster - _required if aws-create-iam-role is true_
+- `--aws-tags` - [OPTIONAL] add extra tags to generated AWS resources
 
 ### Explanation
 
@@ -213,7 +220,10 @@ set hubAcceptsClient to true for managed cluster worker-0
 
 ```
 
-As with join, the `--aws-tags` flag is optional.
+Additional Flags:
+
+- `--aws-hub-eks-cluster` the EKS cluster name of the Hub
+- `--aws-tags` - [OPTIONAL] add extra tags to generated AWS resources
 
 ### IAM Resources
 
