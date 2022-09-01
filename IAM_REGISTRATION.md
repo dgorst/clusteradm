@@ -205,7 +205,7 @@ Creating IAM role ocm.remote-worker.worker-0 with attached policy...
   ]
 }
 Created role arn:aws:iam::2222222222:role/ocm.remote-worker.worker-0
-Attached policy role arn:aws:iam::2222222222:policy/ocm.remote-worker.worker-0 to role arn:aws:iam::464976251208:role/ocm.remote-worker.worker-0
+Attached policy role arn:aws:iam::2222222222:policy/ocm.remote-worker.worker-0 to role arn:aws:iam::2222222222:role/ocm.remote-worker.worker-0
 updating aws-auth to map role arn:aws:iam::2222222222:role/ocm.remote-worker.worker-0 to group system:open-cluster-management:worker-0
 set hubAcceptsClient to true for managed cluster worker-0
 
